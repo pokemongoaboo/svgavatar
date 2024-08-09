@@ -1,41 +1,24 @@
 import streamlit as st
-import os
-import sys
-import cv2
-import numpy as np
+import requests
 
-# 添加PaddleAvatar到系统路径
-paddle_avatar_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "PaddleAvatar"))
-sys.path.append(paddle_avatar_path)
+def generate_avatar(seed):
+    return f"https://api.dicebear.com/6.x/adventurer-neutral/svg?seed={seed}"
 
-# 导入PaddleAvatar相关模块
-from paddleavatar.generate import AvatarGenerator
+st.title("动画头像生成器")
 
-# 初始化AvatarGenerator
-generator = AvatarGenerator()
+seed = st.text_input("输入一个种子值来生成你的头像:")
 
-def main():
-    st.title("PaddleAvatar 虚拟人生成器")
+if st.button("生成头像"):
+    if seed:
+        avatar_url = generate_avatar(seed)
+        st.image(avatar_url, caption="你的个性化头像", use_column_width=True)
+    else:
+        st.warning("请输入一个种子值")
 
-    # 上传图片
-    uploaded_file = st.file_uploader("上传一张人脸图片", type=["jpg", "png", "jpeg"])
-    
-    if uploaded_file is not None:
-        # 读取上传的图片
-        image = cv2.imdecode(np.frombuffer(uploaded_file.read(), np.uint8), 1)
-        st.image(image, caption="上传的图片", use_column_width=True)
+st.markdown("""
+### 关于这个应用
+这个简单的头像生成器使用DiceBear API来创建独特的动画头像。
+每个头像都基于你输入的文本种子，所以你可以通过改变种子来获得不同的头像。
 
-        # 生成按钮
-        if st.button("生成虚拟人"):
-            with st.spinner("正在生成虚拟人..."):
-                try:
-                    # 使用PaddleAvatar生成虚拟人
-                    avatar = generator.generate(image)
-                    
-                    # 显示生成的虚拟人
-                    st.image(avatar, caption="生成的虚拟人", use_column_width=True)
-                except Exception as e:
-                    st.error(f"生成虚拟人时出错: {str(e)}")
-
-if __name__ == "__main__":
-    main()
+尝试输入你的名字、你最喜欢的单词，或任何有趣的短语来看看会生成什么样的头像！
+""")
