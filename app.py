@@ -1,6 +1,7 @@
 import streamlit as st
 from openai import OpenAI
 import requests
+import json
 
 # Initialize OpenAI client
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
@@ -46,8 +47,19 @@ if st.button("獲取回覆"):
         try:
             d_id_response = requests.post(url, json=payload, headers=headers)
             d_id_response.raise_for_status()
-            video_url = d_id_response.json()["result_url"]
-            st.video(video_url)
+            response_data = d_id_response.json()
+            
+            st.write("D-ID API 響應:", json.dumps(response_data, indent=2))
+            
+            if "id" in response_data:
+                st.success(f"成功創建對話！ID: {response_data['id']}")
+                st.info("請等待幾秒鐘，然後使用此ID查詢視頻狀態。")
+            elif "result_url" in response_data:
+                video_url = response_data["result_url"]
+                st.video(video_url)
+            else:
+                st.warning("未找到預期的響應數據。請檢查D-ID API文檔以獲取最新的響應格式。")
+            
             st.write("AI回覆:", ai_response)
         except requests.exceptions.RequestException as e:
             st.error(f"D-ID API錯誤: {str(e)}")
