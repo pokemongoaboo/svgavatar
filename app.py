@@ -35,14 +35,31 @@ def check_video_status(talk_id):
 # Function to display auto-playing video
 def display_auto_play_video(video_url):
     video_html = f"""
-        <video width="100%" autoplay controls>
-            <source src="{video_url}" type="video/mp4">
-            Your browser does not support the video tag.
-        </video>
+        <div style="width:100%; max-width:600px; margin:auto;">
+            <video width="100%" autoplay playsinline>
+                <source src="{video_url}" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
         <script>
             var video = document.querySelector('video');
             video.muted = false;
-            video.play();
+            var playPromise = video.play();
+            if (playPromise !== undefined) {{
+                playPromise.then(_ => {{
+                    console.log('Autoplay started');
+                }}).catch(error => {{
+                    console.log('Autoplay was prevented');
+                    // Show a "Play" button so that user can start playback manually.
+                    var playButton = document.createElement('button');
+                    playButton.innerHTML = "播放視頻";
+                    playButton.onclick = function() {{
+                        video.play();
+                        this.style.display = 'none';
+                    }};
+                    video.parentNode.insertBefore(playButton, video.nextSibling);
+                }});
+            }}
         </script>
     """
     st.components.v1.html(video_html, height=400)
