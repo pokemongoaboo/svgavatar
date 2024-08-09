@@ -8,13 +8,15 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 d_id_api_key = st.secrets["D_ID_API_KEY"]
 
 # Streamlit app
-st.title("虛擬對話助理 (交互式網頁嵌入)")
+st.title("虛擬對話助理 (交互式會話)")
 
 # Initialize session state
 if 'messages' not in st.session_state:
     st.session_state.messages = []
 if 'generating' not in st.session_state:
     st.session_state.generating = False
+if 'session_id' not in st.session_state:
+    st.session_state.session_id = None
 
 # User input and settings
 voice_options = ["zh-CN-XiaoxiaoNeural", "zh-CN-YunxiNeural", "zh-CN-YunyangNeural"]
@@ -22,7 +24,7 @@ selected_voice = st.sidebar.selectbox("選擇語音:", voice_options)
 
 # Function to create D-ID interactive session
 def create_interactive_session():
-    url = "https://api.d-id.com/talks/streams"
+    url = "https://api.d-id.com/talks"
     headers = {
         "accept": "application/json",
         "content-type": "application/json",
@@ -36,6 +38,16 @@ def create_interactive_session():
         }
     }
     response = requests.post(url, json=payload, headers=headers)
+    return response.json()
+
+# Function to get session status
+def get_session_status(session_id):
+    url = f"https://api.d-id.com/talks/{session_id}"
+    headers = {
+        "accept": "application/json",
+        "authorization": f"Basic {d_id_api_key}"
+    }
+    response = requests.get(url, headers=headers)
     return response.json()
 
 # Function to generate response and update interactive session
@@ -62,13 +74,12 @@ def generate_response_and_update(user_input):
         return
 
     # Step 2: Update D-ID interactive session
-    if 'session_id' not in st.session_state:
+    if not st.session_state.session_id:
         session_data = create_interactive_session()
         st.session_state.session_id = session_data['id']
-        st.session_state.iframe_url = session_data['iframe_url']
 
     try:
-        url = f"https://api.d-id.com/talks/streams/{st.session_state.session_id}"
+        url = f"https://api.d-id.com/talks/{st.session_state.session_id}"
         headers = {
             "accept": "application/json",
             "content-type": "application/json",
@@ -87,14 +98,21 @@ def generate_response_and_update(user_input):
         response = requests.post(url, json=payload, headers=headers)
         if response.status_code != 200:
             st.error(f"D-ID API錯誤: {response.text}")
+        else:
+            # Wait for the session to be ready
+            status = get_session_status(st.session_state.session_id)
+            while status['status'] != 'done':
+                status = get_session_status(st.session_state.session_id)
     except Exception as e:
         st.error(f"D-ID API錯誤: {str(e)}")
     
     st.session_state.generating = False
 
-# Display interactive iframe
-if 'iframe_url' in st.session_state:
-    st.components.v1.iframe(st.session_state.iframe_url, height=400)
+# Display interactive content
+if st.session_state.session_id:
+    status = get_session_status(st.session_state.session_id)
+    if status['status'] == 'done':
+        st.video(status['result_url'])
 
 # Display chat history
 for message in st.session_state.messages:
