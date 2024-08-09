@@ -1,44 +1,41 @@
 import streamlit as st
-from streamlit_drawable_canvas import st_canvas
-import base64
+import os
+import sys
+import cv2
+import numpy as np
 
-# 簡單的SVG頭像
-avatar_svg = """
-<svg width="100" height="100" viewBox="0 0 100 100">
-    <circle cx="50" cy="50" r="45" fill="#4299E1" />
-    <circle cx="35" cy="40" r="5" fill="white" />
-    <circle cx="65" cy="40" r="5" fill="white" />
-    <path d="M 30 60 Q 50 70 70 60" stroke="white" stroke-width="3" fill="none" />
-</svg>
-"""
+# 添加PaddleAvatar到系统路径
+paddle_avatar_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "PaddleAvatar"))
+sys.path.append(paddle_avatar_path)
 
-# 將SVG轉換為可顯示的格式
-b64 = base64.b64encode(avatar_svg.encode("utf-8")).decode("utf-8")
+# 导入PaddleAvatar相关模块
+from paddleavatar.generate import AvatarGenerator
 
-# 顯示頭像
-st.write(f'<img src="data:image/svg+xml;base64,{b64}" alt="avatar">', unsafe_allow_html=True)
+# 初始化AvatarGenerator
+generator = AvatarGenerator()
 
-# 聊天界面
-st.title("虛擬助理")
+def main():
+    st.title("PaddleAvatar 虚拟人生成器")
 
-# 初始化聊天歷史
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-# 顯示聊天歷史
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
-# 接收用戶輸入
-if prompt := st.chat_input("輸入您的訊息..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    # 這裡你可以添加實際的對話邏輯
-    response = f"你說: {prompt}"
+    # 上传图片
+    uploaded_file = st.file_uploader("上传一张人脸图片", type=["jpg", "png", "jpeg"])
     
-    st.session_state.messages.append({"role": "assistant", "content": response})
-    with st.chat_message("assistant"):
-        st.markdown(response)
+    if uploaded_file is not None:
+        # 读取上传的图片
+        image = cv2.imdecode(np.frombuffer(uploaded_file.read(), np.uint8), 1)
+        st.image(image, caption="上传的图片", use_column_width=True)
+
+        # 生成按钮
+        if st.button("生成虚拟人"):
+            with st.spinner("正在生成虚拟人..."):
+                try:
+                    # 使用PaddleAvatar生成虚拟人
+                    avatar = generator.generate(image)
+                    
+                    # 显示生成的虚拟人
+                    st.image(avatar, caption="生成的虚拟人", use_column_width=True)
+                except Exception as e:
+                    st.error(f"生成虚拟人时出错: {str(e)}")
+
+if __name__ == "__main__":
+    main()
