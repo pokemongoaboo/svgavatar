@@ -1,28 +1,37 @@
 import streamlit as st
 import time
+from gtts import gTTS
+import os
+import base64
 
-def generate_avatar_url(seed, style):
-    return f"https://api.dicebear.com/6.x/{style}/svg?seed={seed}"
+def text_to_speech(text, lang='zh-cn'):
+    tts = gTTS(text=text, lang=lang)
+    tts.save("speech.mp3")
+    with open("speech.mp3", "rb") as f:
+        audio_bytes = f.read()
+    os.remove("speech.mp3")
+    return audio_bytes
 
-st.title("动画头像生成器")
+st.title("虚拟助理")
 
-seed = st.text_input("输入一个基础种子值来生成你的动画头像:")
-style = st.selectbox("选择头像风格", ["adventurer", "avataaars", "bottts", "pixel-art"])
+avatar_seed = st.text_input("输入头像种子:", value="assistant")
+message = st.text_input("输入消息:")
 
-if st.button("生成动画头像"):
-    if seed:
-        frames = 5
-        placeholder = st.empty()
-        while True:
-            for i in range(frames):
-                avatar_url = generate_avatar_url(f"{seed}{i}", style)
-                placeholder.image(avatar_url, caption="你的动画头像", use_column_width=True)
-                time.sleep(0.2)
-    else:
-        st.warning("请输入一个种子值")
+if st.button("说话"):
+    avatar_url = f"https://api.dicebear.com/6.x/adventurer-neutral/svg?seed={avatar_seed}"
+    st.image(avatar_url, width=200)
+    
+    audio_bytes = text_to_speech(message)
+    st.audio(audio_bytes, format='audio/mp3')
+    
+    # 模拟嘴巴动画
+    progress_bar = st.progress(0)
+    for i in range(100):
+        time.sleep(0.02)
+        progress_bar.progress(i + 1)
 
 st.markdown("""
 ### 关于这个应用
-这个动画头像生成器使用DiceBear API创建一系列稍有不同的头像，然后快速切换它们来创造动画效果。
-尝试不同的种子值和头像风格来创建你自己的独特动画头像！
+这个虚拟助理应用使用DiceBear API生成头像，并使用gTTS（Google Text-to-Speech）生成语音。
+嘴巴动画目前是用进度条模拟的。在实际应用中，你可能需要使用更高级的动画技术。
 """)
