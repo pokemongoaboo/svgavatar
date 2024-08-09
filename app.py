@@ -32,6 +32,21 @@ def check_video_status(talk_id):
     response = requests.get(url, headers=headers)
     return response.json()
 
+# Function to display auto-playing video
+def display_auto_play_video(video_url):
+    video_html = f"""
+        <video width="100%" autoplay controls>
+            <source src="{video_url}" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <script>
+            var video = document.querySelector('video');
+            video.muted = false;
+            video.play();
+        </script>
+    """
+    st.components.v1.html(video_html, height=400)
+
 # Function to generate response and video
 def generate_response_and_video(user_input):
     st.session_state.generating = True
@@ -95,7 +110,7 @@ def generate_response_and_video(user_input):
                 if status_data.get('status') == 'done':
                     video_url = status_data.get('result_url')
                     if video_url:
-                        st.video(video_url)
+                        display_auto_play_video(video_url)
                         break
                 time.sleep(1)
             else:
