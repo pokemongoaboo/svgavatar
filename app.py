@@ -11,8 +11,11 @@ d_id_api_key = st.secrets["D_ID_API_KEY"]
 # Streamlit app
 st.title("虛擬對話助理")
 
-# User input
+# User input and settings
 user_input = st.text_input("請輸入您的問題:")
+voice_options = ["zh-CN-XiaoxiaoNeural", "zh-CN-YunxiNeural", "zh-CN-YunyangNeural"]
+selected_voice = st.selectbox("選擇語音:", voice_options)
+max_duration = st.slider("最大視頻時長 (秒):", 10, 60, 30)
 
 # Function to check video status
 def check_video_status(talk_id):
@@ -31,7 +34,7 @@ if st.button("獲取回覆"):
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "system", "content": "You are a helpful assistant. Please respond in Chinese."},
                     {"role": "user", "content": user_input}
                 ]
             )
@@ -50,9 +53,21 @@ if st.button("獲取回覆"):
         payload = {
             "script": {
                 "type": "text",
-                "input": ai_response
+                "input": ai_response,
+                "provider": {
+                    "type": "microsoft",
+                    "voice_id": selected_voice
+                }
             },
-            "source_url": "https://create-images-results.d-id.com/DefaultPresenters/Emma_f/image.png"
+            "config": {
+                "fluent": True,
+                "pad_audio": 0,
+                "driver_expressions": {
+                    "expressions": [{"expression": "neutral", "start_frame": 0, "intensity": 0.7}]
+                }
+            },
+            "source_url": "https://create-images-results.d-id.com/DefaultPresenters/Emma_f/image.png",
+            "webhook": "https://example.com/webhook"
         }
         
         try:
