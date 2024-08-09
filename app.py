@@ -1,43 +1,58 @@
 import streamlit as st
-import time
-from gtts import gTTS
-import os
-import base64
-from animated_avatar import animated_avatar
+from openai import OpenAI
+import requests
 
-def text_to_speech(text, lang='zh-cn'):
-    tts = gTTS(text=text, lang=lang)
-    tts.save("speech.mp3")
-    with open("speech.mp3", "rb") as f:
-        audio_bytes = f.read()
-    os.remove("speech.mp3")
-    return audio_bytes
+# Initialize OpenAI client
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+d_id_api_key = st.secrets["D_ID_API_KEY"]
 
-def main():
-    st.title("虚拟助理")
+# Streamlit app
+st.title("虛擬對話助理")
 
-    avatar_seed = st.text_input("输入头像种子:", value="assistant")
-    message = st.text_input("输入消息:")
+# User input
+user_input = st.text_input("請輸入您的問題:")
 
-    if st.button("说话"):
-        avatar_url = f"https://api.dicebear.com/6.x/adventurer-neutral/svg?seed={avatar_seed}"
+if st.button("獲取回覆"):
+    if user_input:
+        # Step 1: Get response from OpenAI
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": user_input}
+                ]
+            )
+            ai_response = response.choices[0].message.content
+        except Exception as e:
+            st.error(f"OpenAI API錯誤: {str(e)}")
+            st.stop()
+
+        # Step 2: Generate video using D-ID
+        url = "https://api.d-id.com/talks"
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "authorization": f"Basic {d_id_api_key}"
+        }
+        payload = {
+            "script": {
+                "type": "text",
+                "input": ai_response
+            },
+            "source_url": "https://create-images-results.d-id.com/DefaultPresenters/Emma_f/image.png"
+        }
         
-        # 使用自定义动画组件
-        animated_avatar(avatar_url, is_speaking=True)
-        
-        audio_bytes = text_to_speech(message)
-        st.audio(audio_bytes, format='audio/mp3')
-        
-        # 等待音频播放完毕（这里假设每个字需要0.5秒）
-        time.sleep(len(message) * 0.5)
-        
-        # 停止说话动画
-        animated_avatar(avatar_url, is_speaking=False)
+        try:
+            d_id_response = requests.post(url, json=payload, headers=headers)
+            d_id_response.raise_for_status()
+            video_url = d_id_response.json()["result_url"]
+            st.video(video_url)
+            st.write("AI回覆:", ai_response)
+        except requests.exceptions.RequestException as e:
+            st.error(f"D-ID API錯誤: {str(e)}")
+    else:
+        st.warning("請輸入問題")
 
-    st.markdown("""
-    ### 关于这个应用
-    这个虚拟助理应用使用DiceBear API生成头像，使用自定义的Canvas动画来模拟说话效果，并使用gTTS（Google Text-to-Speech）生成语音。
-    """)
-
-if __name__ == "__main__":
-    main()
+# Display current model information
+st.sidebar.write("當前使用的模型: GPT-4")
